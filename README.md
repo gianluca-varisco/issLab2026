@@ -1,7 +1,15 @@
 # issLab2026
  Laboratorio di <b>Ingegneria dei Sistemi Software</b> a.a. 2025/2026 di Varisco Gianluca 0001240716
 
- [Testo di riferimento:](https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf)
+ <h2 id="Materiale">Materiale fornito dal prof</h2>
+
+  * [contenuti HTML](https://anatali.github.io/issLab2026/index.html)
+  * [Testo di riferimento](https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf)
+  * [Gradle Tutorial](https://anatali.github.io/issLab2026/_static/docs/GradleTutorialForCompleteBeginners.pdf)
+    
+<h2 id="Lectures">Argomenti svolti a lezione</h2>
+
+  * [Lectures HTML](https://anatali.github.io/issLab2026/LectureBologna2026.html)
  <!-- comment: [ancora personalizzata] -->
 
  <h2 id="ParteA">Parte A: Dai programmi ai Sistemi a Microservizi</h2>
