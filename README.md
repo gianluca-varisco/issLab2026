@@ -12,6 +12,8 @@
   * [Lectures HTML](https://anatali.github.io/issLab2026/LectureBologna2026.html)
  <!-- comment: [ancora personalizzata] -->
 
+ # Chronicle [index](https://gianluca-varisco.github.io/issLab2026/)
+
  <h2 id="ParteA">Parte A: Dai programmi ai Sistemi a Microservizi</h2>
 
  ### Sistema ConwayLife in locale
