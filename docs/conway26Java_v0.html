@@ -44,7 +44,267 @@ R2  L’utente umano deve poter:
   
 
 <h2>Requirement analysis</h2>
- 
+<pre>
+<b>Che cosa intende il committente per Cell?</b>
+Per Cell, dopo aver parlato con il committente, formalizzo il seguente modello:
+    <code>
+    package main.java.conway.domain;
+
+		public interface ICell {
+            /* l'entità ha la capacità di rispondere ad una sorta di query con il proprio stato (viva o morta) */
+			public boolean isAlive();
+
+            /* l'entità dovrà avere la capacità di modificare il proprio stato interno secondo un valore booleano */
+			public void setStatus(boolean status);
+
+            /* l'entità ha la capacità di passare da viva a morta e viceversa */
+            public void switchStatus();
+		}
+    </code>
+
+<u>TestPlan per Cell:</u>
+Sviluppo una TestPlan Unit per andare a definire il comportamento atteso dalla cella
+	<code>
+		package main.java.test;
+
+		import static org.junit.Assert.assertTrue;
+
+		import org.junit.After;
+		import org.junit.Before;
+		import org.junit.Test;
+
+		import main.java.conway.domain.Cell;
+		import main.java.conway.domain.ICell;
+
+		public class CellTest {
+			private ICell c; 
+			@Before
+			public void setup() {
+				System.out.println("CellTest | setup");	
+				c = new Cell();
+			}
+			@After
+			public void down() {
+				System.out.println("CellTest | down");
+			}
+
+			@Test
+			public void TestCellAlive() {
+				System.out.println("CellTest | doing alive");
+				c.setStatus(true);
+				boolean r = c.isAlive();
+				assertTrue(r);
+			}
+			@Test
+			public void TestCellDead() {
+				System.out.println("CellTest | doing dead");
+				c.setStatus(false);
+				boolean r = c.isAlive();
+				assertTrue(!r);	// oppure assertFalse(r);
+			}
+			@Test
+			public void TestSwitchStatus() {
+				System.out.println("CellTest | doing switch status");
+				c.setStatus(true);
+				c.switchStatus();
+				assertFalse(c.isAlive());
+				c.switchStatus();
+				assertTrue(c.isAlive());
+			}
+
+		}
+	</code>
+
+<b>Che cosa intende il committente per Grid?</b>
+Il committente ha un'idea di Grid composta da Cell.
+E' un'entità a due dimensioni (una volta fissate non variabili): colonne e righe.
+
+<code>
+	package main.java.conway.domain;
+
+	public interface IGrid {
+		/* l'entità deve essere in grado di restituire le proprie dimensioni */
+		public int getRows();	// primitiva, non possono essere negativo -> test
+    	public int getCols();	// primitiva, non possono essere negativo -> test
+
+		/* entità deve essere in grado di restituire una sua componente */
+    	public ICell getCell(int row, int col);	//primitiva
+
+
+    	public int countAliveNeighbors(int row, int col);	// non primitiva, utility
+    	
+		/* l'entità fornisce un metodo per resettare lo stato di tutti i componenti (celle) */
+		public void clear();	// non primitiva
+	}
+</code>
+
+<u>TestPlan per Grid:</u>
+Sviluppo una TestPlan Unit per andare a definire il comportamento atteso dalla griglia.
+Ci sono specifiche che non sono coperte dall'interfaccia: 
+- assicurarsi che le due get mi restituiscano un natural (>=0)
+- getCell: x e y devono essere >= 0 e &lt; get (valutare cosa succede in caso errato, eccezione?)
+	prima imposto lo stato e poi controllo che mi restituisca uno stato coerente
+- reset: vado a controllare se sono tutte morte (for innestato)
+	<code>
+		package main.java.test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import main.java.conway.domain.Grid;
+import main.java.conway.domain.IGrid;
+
+
+
+public class GridTest {
+	private IGrid g;
+    private final int ROWS = 5;
+    private final int COLS = 5;
+    
+	@Before
+	public void setup() {
+		System.out.println("GridTest | setup");	
+		g = new Grid(ROWS, COLS);
+	}
+
+	@After
+	public void down() {
+		System.out.println("GridTest | down");
+	}
+	
+	@Test
+	public void testDims() {
+		System.out.println("testDims ---------------------" );
+		int nr = g.getRows();
+		int nc = g.getCols();
+		assertTrue( nr==ROWS && nc==COLS);
+	}
+	@Test
+	public void testCGridCellValue() {
+		System.out.println("testCGridCellValue ---------------------" );
+		g.getCell(0,0).setStatus(true);
+		assertTrue(   g.getCell(0,0).isAlive() );
+		assertFalse(  g.getCell(0,1).isAlive() );
+	}
+	@Test
+	public void testGridRep() {
+		System.out.println("testGridRep ---------------------" );
+ 		System.out.println(""+g);
+		assertTrue( g.toString().startsWith(". . . . ."));
+	}
+	@Test
+    public void testInitialization() {
+		System.out.println("GridTest | doing initialization");
+        assertEquals(ROWS, g.getRows());
+        assertEquals(COLS, g.getCols());
+        // Verifica che inizialmente siano tutte morte
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
+                assertFalse(g.getCell(r, c).isAlive());
+            }
+        }
+    }
+	@Test
+	public void testGetCell() {
+		System.out.println("GridTest | doing getCell");
+		// semantica: x e y devono essere compresi tra 0 e getRows o getCols -1
+		// mi aspetto exception o null ??
+	}
+    @Test
+    public void testClear() {
+    	System.out.println("GridTest | doing clear");
+        // Accendo una cella e poi pulisco
+        g.getCell(1, 1).setStatus(true);
+        g.clear();
+        assertFalse(g.getCell(1, 1).isAlive());
+    }
+    @Test
+    public void testCountAliveNeighborsBasic() {
+    	System.out.println("GridTest | doing count alive neighbors BASIC");
+        /*
+          Configurazione (al centro):
+          M V M
+          M C M
+          V M V
+          C = Cella sotto esame (2,2). Vicini vivi attesi: 3
+        */
+        g.getCell(1, 2).setStatus(true);
+        g.getCell(3, 1).setStatus(true);
+        g.getCell(3, 3).setStatus(true);
+
+        assertEquals(3, g.countAliveNeighbors(2, 2));
+    }
+    @Test
+    public void testCountAliveNeighborsEdges() {
+    	System.out.println("GridTest | doing count alive neighbors EDGES");
+        // Test agli angoli (0,0)
+        g.getCell(0, 1).setStatus(true);
+        g.getCell(1, 0).setStatus(true);
+        g.getCell(1, 1).setStatus(true);
+
+        // La cella 0,0 ha 3 vicini vivi
+        assertEquals(3, g.countAliveNeighbors(0, 0));
+    }
+}
+
+
+	</code>
+
+<b>Che cosa intende il committente per Life?</b>
+Il committente non sa cos'è Life, ma mi dice che è la logica del gioco, contiene in sè le regole del gioco
+Strutturalmente, Life è composta da una Griglia
+
+<code>
+	package main.java.conway.domain;
+
+public interface LifeInterface {
+	/** Calcola l'evoluzione dello stato alla generazione successiva */
+    void nextGeneration();
+
+    /** Restituisce lo stato di una cella specifica */
+    boolean isAlive(int row, int col);	//non primitiva
+
+    /** Imposta lo stato di una cella */
+    void setCell(int row, int col, boolean alive);	//non primitiva
+
+    /** Restituisce il numero di righe e colonne */
+//    int getRows();
+//    int getCols();
+    
+    /** Restituisce la Cella */
+    ICell getCell(int x, int y);
+    
+    /** Restituisce la grid */
+    Grid getGrid();
+    
+    /** pulisce */
+    void resetGrids();
+    
+    /** Restituisce una rappresentazione grafica testuale della grglia*/
+    public String gridRep( );
+}
+
+</code>
+
+<u>TestPlan per Life:</u>
+Sviluppo una TestPlan Unit per andare a definire il comportamento atteso di Life.
+Che test pianifico:
+- faccio reset, imposto una sola cella, faccio nextGeneration e vado a vedere che sia morta
+- setto una configurazione conosciuta (es 3 verticali) e controllo che segua le regole (va orizzontale)
+
+
+<!--
+    <a href="https://github.com/gianluca-varisco/issLab2026/.../ConwayLife/Sprint1/conway26Java/src/main/java/test/LifeTest.java" target="_blank" rel="noopener noreferrer">
+    Visualizza su GitHub il codice dei test
+    </a>
+-->
+
+</pre>
 
 <h2>Problem analysis</h2>
  
