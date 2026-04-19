@@ -13,8 +13,9 @@ java {
 
 repositories {
     mavenCentral()
-    flatDir {   dirs './libs'    }
+    flatDir {   dirs './libs'    } // considera anche il jar dello Sprint1
     flatDir {   dirs '../../../unibolibs'    }
+    
 }
 
 dependencies {
@@ -28,7 +29,7 @@ dependencies {
     implementation name: '2p301'
     implementation name: 'unibo.basicomm23-1.0'
     
-    /* conway ******************************* */
+    /* conway ******************************* Risultato Sprint1*/
     implementation name: 'conway26Java-1.0'
 }
 
@@ -49,7 +50,7 @@ eclipse {
 
 application {
     //Define the main class for the application.
-    mainClassName    = 'main.java.conway.MainConwayLifeJava'
+    mainClassName    = 'conway26Java.MainConwayLifeJava'
 }
 
 jar {

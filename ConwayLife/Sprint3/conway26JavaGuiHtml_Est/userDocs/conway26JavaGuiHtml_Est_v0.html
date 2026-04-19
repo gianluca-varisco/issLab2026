@@ -1,0 +1,191 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="css/mystyle.css">
+<!--
+    <script type="text/javascript" src="../css/issStyle.js"></script>
+-->
+    
+</head>
+   
+<title>conway26JavaGuiHtml_Est_v0</title></head>
+    
+
+<body>
+<div id="top">
+<h1>ConwayLife Sprint3 - versione esterna</h1>
+</div>  
+
+<div class="body">  
+
+<h2>Introduction</h2>
+<b>Goal: </b>Realizzazione in Java del
+<a href='https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.6'>GAME OF LIFE DI CONWAY</a> con GUI del gioco realizzata come una pagina Web.
+<br/>
+<p>
+	La logica del gioco è già stata analizzata nello <a href="https://gianluca-varisco.github.io/issLab2026/conway26Java_v0.html" target="_blank" rel="noopener noreferrer">Sprint1</a>. 
+	Utiliziamo quindi il risultato ottenuto, che costituisce un sottosistema funzionante, come punto di partenza per questo nuovo lavoro (deployed in un file <b>conway26Java-1.0.jar</b>).
+</p>
+
+
+<h2>Requirements</h2>
+<p>
+	Ricordiamo dai requisiti dello 
+	<a href="https://gianluca-varisco.github.io/issLab2026/conway26Java_v0.html" target="_blank" rel="noopener noreferrer">Sprint1</a>. 
+	che l’utente umano deve poter:
+	<ul>
+		<li>specificare la configurazione iniziale della griglia del gioco</li>
+		<li>vedere l’evoluzione del gioco in forma opportuna (si veda <a href='https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#section.6.3'>Problema della vista del gioco</a> )</li>
+		<li>fermare e far ripartire l’evoluzione del gioco</li>
+		<li>pulire (a gioco fermo) la configurazione della griglia del gioco</li>
+	</ul>
+</p>
+
+ 
+<!-- <div class="remark"> -->
+Ora si aggiungo i seguenti requisiti:
+<ol class="req-list">
+	<li>
+		<span>dotare il gioco Life di una pagina HTML come dispositivo di I/O</span>
+	</li>
+	<li>	
+		<span>la pagina deve costituire un componente esterno alla applicazione secondo la architettura riportata in 
+			<a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#subsection.8.2.4" target="_blank" rel="noopener noreferrer">IoJavalin esterno all'applicazione</a>
+		</span>
+	</li>
+	<li>
+		<span>il gestore del gioco sarà l’utente che ha aperto per primo (owner) una pagina HTML collegata al gioco. In altre
+			parole, solo la pagina dell’owner avrà pulsanti di comando START/STOP/CLEAN/EXIT attivi</span>
+	</li>
+	<li>
+		<span>la pagina HTML deve essere aggiornata in modo automatico man mano il gioco procede</span>
+	</li>
+	<li>
+		<span>un utente non owner che si collega mentre il gioco è in corso, dovrebbe vedere lo stato attuale della griglia in
+			modo corretto</span>
+	</li>
+	<li>
+		<span>il deployment del gioco deve avvenire mediante Docker</span>
+	</li>
+</ol>
+
+<h2>Requirement analysis</h2>
+<p>
+	Il requisito di dotare il gioco di una pagina HTML si inquadra nel contesto dei moderni sistemi Web, che vengono supportati da appositi servere da Browser.
+</p>
+<p>
+	Analizzo l'architettura del sistema che voglio realizzare (javalin esterno all'applicazione), riportata in questo modello informale:<br/>
+	<img src="./img/IoJavalin_esterno.png" alt="foto" width="75%" height="75%">
+	<br/>Il dispositivo di I/O utilizza un client WebSocket per interagire col server che eroga la pagina, che viene creata in modo indipendente dalla applicazione.
+</p>
+<p>
+	Il componente che utilizza il server (d'ora in poi indicato con <i>iojavalin</i>) è parte di un componente (servizio) esterno all'applicazione, che quindi dovrà realazionarsi con il LifeController applicativo mediante dei messaggi.
+	<br/>Il committente ha indicato che l'interazione applicazione-servizio, almeno in questo prototipo iniziale, dovrà avvenire via Web sulla porta 8080. In futuro si potrà discutere l'utilizzo di protocolli diversi, come MQTT.
+</p>
+
+
+
+<h2>Problem analysis</h2>
+<p>
+	Lo scenario da affrontare è quello di un sistema distribuito in cui:
+	<ol>
+		<li>una parte del sistema (GUI) è del tutto nuova rispetto allo Sprint1 (Job1)</li>
+		<li>una parte del sistema (applicazione) è già disponibile e deve essere "adattata" a interagire con la GUI (Job2)</li>
+	</ol>
+	Queste due parti costituiranno un sistema solo se capaci di interagire in modo opportuno scambiandosi informazioni via rete sotto forma di messaggi.
+</p>
+<p>
+	E' importante quindi andare a delineare le interazioni tra i componenti del sistema e la natura dei mesaggi scambiati.
+	<a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#subsection.9.2.1" target="_blank" rel="noopener noreferrer">IApplMessage</a>
+	, ovvero qualcosa del tipo msg( MSGID, MSGTYPE, SENDER, RECEIVER, CONTENT, SEQNUM ). <br/>
+	Questo modo di esprimere i messaggi implica che ciascun componente abbia un nome: <i>lifectrl</i> sarà l'applicazione e <i>guiserver</i> il componente che include <i>iojavalin</i>.<br/>
+	Per quanto detto nell'analisi dei requisiti la comunicazione tra i componenti avverrà tramite WS.<br/>
+	<i>lifectrl</i> si deve manifestare a <i>guiserver</i> aprendo uan connessione WS sulla porta 8080- Ciò implica cge <i>guiserver</i> debba gestire almento due connessioni: quella con la pagina owner (pageCtx) e quella con l'appliocazione (lifeCtrlCtx).
+</p>
+<p>
+	Si ha un vincolo implicito dovuto alla configuarazione del sistema attuale, in cui <i>guiserver</i> fingue da dispositivo I/O per il livello applicativo: quest'ultimo utilizza la stessa connessione sia per ricevere l'input sia per inviare l'output al server.
+</p>
+<p>
+	<b>Lato server:</b><br/>
+	<ul>
+		<li>
+			<b>comunicazioni pagina-server</b>: è opportuna che la pagina comunichi con un servizio applicativo come <i>guiserver</i> usando stringhe di uesto tipo msg( MSGID, MSGTYPE, SENDER, RECEIVER, CONTENT, SEQNUM ), in modo da permettere a <i>guiserver</i> di ottenre degli oggetti che rispettano l'interfaccia IApplMessage.
+			I messaggi inviati dalle pagine sono di tipo fire-and-forget (dispatch), in quanto devono provocare un'azione lato server senza implicare la ricezione di una risposta.<br/>
+			Per quanto riguarda la <u>denominazione delle pagine</u> non è opportuno che siano auto-attribuiti dalla pagina stessa, invece conviene che sia il server a dare il nome ad una pagina che si connette.
+			una pagina ha inizialmente il nome unknown (utilizato come SENDER alla prima connessione con il server). Il <i>guiserver</i> reagisce a una richiesta di connessione forgiando un nome di sua invenzione e tiene traccia della prima erogata (owner).
+			In questo modo il server potrà evitare di gestire comandi provenienti dai pulsanti di pagine che non sono owner.<br/>
+			Per quanto rigurda invece i <u>comandi da pagine a server</u> conterranno nel payload CONTENT una semèplice stringa quale start/stop/clear oppure cell(x.y) per indicare quale azione è stata eseguita lato utente. Alla ricezione di dispatch di questo genere, <i>guiserver</i> dovrà inviare a sua volta un messaggio di comando a <i>lifectrl</i> (se provenienti dall'owner), ritrasmettendolo sulla connessione lifeCtrlCtx.<br/>
+			Nel caso di payload cell(x,y), <i>lifectrl</i> dovrà commutare lo stato della cella di coordinate indicate e iniviare un comando di aggiornamento a <i>guiserver</i>.
+		</li>
+		<li>
+			<b>comunicazioni server-pagina</b>: il server invia alla pagina comandi espressi da semplici stringhe (con messaggi di aggiornamento cella per cella se la griglia è rappresentata in modo granulare, con lo stato di tutta la griglia se invece si utilizza l'elemento canvas). Questi semplici comndi-strigna dovranno essere interpretati e gestiti da codice JavaScript definito nella pagina (specifica del codice rimandata alla fase di Progetto).<br/>
+			Osserviamo che, una volta attivato, il componente <i>guiserver</i> permette che un browser possa onnettersi specificanfo un url con porta 8080. tuttavia, il browser visualizzerà una pagina senza alcuna rappresentazione delle griglia.
+		</li>
+		<li>
+			<b>comunicazioni <i>guiserver</i>-applicazione</b>: il Job2 nosiste nella realizzazione di una implementazione di 
+			<a href="https://github.com/gianluca-varisco/issLab2026/blob/main/ConwayLife/Sprint1/conway26Java/src/main/java/conway/domain/IOutDev.java" target="_blank" rel="noopener noreferrer">IOutDev</a>
+			all'interno del componente applicativo, che stabilisca una Interconnessione basata su WS con la GUI. 
+			<br/>La prima cosa che il dispositivo lato applicativo deve fare è manifestare al <i>guiserver</i> l'esistenza del livello applicativo inviando il dispatch con id="setcontroller". Alla ricezione di questo comando il server memorizza in lifeCtrlCtx la connessione con il livello applicativo.
+			Tutta la logica di interazione tra l'applicazione e il <i>guiserver</i> deve essere gestita dalla classe 
+			<a href="github.com/gianluca-varisco/issLab2026/blob/main/ConwayLife/Sprint3/conway26JavaGuiHtml_Est/src/main/java/conway26appl/OutInGuiInteraction.java" target="_blank" rel="noopener noreferrer">OutInGuiInteraction</a>
+		</li>
+	</ul>
+</p>
+
+
+<h2>Test plans</h2> 
+<p>
+	In base al requisito R3, il comportamento atteso in caso di più utenti è che ogni pagina mostri i pulsati, ma che un click su questi provochi degli effetti solo nel caso in cui la pagine sia dell'owner del gioco.
+	<br/>Per testare questo comportamento, visto che impostare teest automatizzati per pagine HMTL è complicato, mi limito ad andare a verificare il comportamento dell'applicazione aprendo su due browser dello stesso computer localhost:8080 e verificare che solo il primo che è stato aperto riesce a controllare il gioco.
+</p>
+<p>
+	Una volta definite le forme di interazione tra i componenti si possono sviluppare delle JUnit che invino comandi conformi e facciano asserzioni sul risultato atteso.
+</p>
+
+
+
+
+<h2>Project</h2> 
+<p>
+	Tenendo conto di quanto detto nell'analisi, a livellodi progettaazione dobbiamo:
+	<ol>
+		<li>
+			impostare il codice JavaScript per interpretare i messaggi prevenienti da <i>lifectrl</i>. A tal fine definiamo:
+			<a href="https://github.com/gianluca-varisco/issLab2026/blob/main/ConwayLife/Sprint3/conway26JavaGuiHtml_Est/src/main/resources/page/wscanvascontrol.js" target="_blank" rel="noopener noreferrer">wscancascontrol.js</a> per le pagine con griglia  globale e 
+			<a href="https://github.com/gianluca-varisco/issLab2026blob/main/ConwayLife/Sprint3/conway26JavaGuiHtml_Est/src/main/resources/page/wscontrol.js" target="_blank" rel="noopener noreferrer">wscontrol.js</a> per le pagine con griglia granulare.
+		</li>
+	</ol>
+</p>
+ 
+ 
+
+<h2>Testing</h2> 
+ 
+
+<h2>Deployment</h2> 
+
+ 
+<h2>Maintenance</h2> 
+ 
+<!-- USEFUL
+<table style="width:100%" border="1">
+<tr>
+<td style="width:50%">
+</td>
+<td></td>
+</tr>
+</table>
+-->
+	      	
+<br/><br/> 	
+</div>  
+
+<div style="background-color:rgba(86, 56, 253, 0.9); width:63%;text-align:left;color:white">
+By Gianluca Varisco email: gianluca.varisco@studio.unibo.it, 
+<!-- <img src="./img/mbot-S.jpg" alt="mbot" width="15%" height="15%"> -->
+<img src="d:\magistrale\primo_anno\2_semestre\ingegneria_dei_sistemi_software\consegna_prof\foto_per_iss.jpeg" alt="foto_per_iss" width="8%" height="8%">
+GIT repo: https://github.com/gianluca-varisco/issLab2026
+</div> 
+</body>
+</html>

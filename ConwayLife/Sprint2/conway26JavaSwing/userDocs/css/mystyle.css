@@ -83,6 +83,10 @@ div.top {
 			background-color: #f5f5f5;
 			border: 1.5px solid silver;
 			padding: 5px;
+
+   			white-space: pre-wrap;
+    		word-wrap: break-word;
+    		overflow-wrap: break-word;
 		}
 
 		div.body {
@@ -96,7 +100,7 @@ div.top {
 		}
 
 		h2 {
-			#background-color: #9ed8ff;
+			background-color: #9ed8ff;
 		font-size: 0.8em;
 		background-color: #e1f4d7 !important;
 		color: rgb(47, 0, 255) !important;
@@ -177,3 +181,53 @@ div.top {
 			margin: auto;
 		}
  
+/* 1. Configurazione della lista principale */
+ol.req-list {
+    counter-reset: r-counter; /* Inizializza il contatore */
+    list-style-type: none;    /* Rimuove i numeri 1. 2. 3. di default */
+    padding-left: 0;          /* Rimuove il rientro standard */
+}
+
+/* 2. Stile per ogni punto R: */
+ol.req-list > li {
+    counter-increment: r-counter;
+    margin-bottom: 15px;
+    display: flex;            /* Allinea R e testo */
+    flex-wrap: wrap;          /* Permette alla sottolista di andare sotto */
+    align-items: flex-start;
+}
+
+/* 3. Il prefisso R1:, R2:, ecc. */
+ol.req-list > li::before {
+    content: "R" counter(r-counter) ": ";
+    font-weight: bold;
+    flex-shrink: 0;           /* Non si schiaccia mai */
+    width: 45px;              /* Spazio fisso per la R */
+}
+
+/* 4. Il testo accanto alla R (deve essere dentro uno <span> nell'HTML) */
+ol.req-list > li > span {
+    flex: 1;                  /* Prende tutto lo spazio a destra della R */
+    min-width: 250px;         /* Impedisce al testo di diventare troppo stretto */
+}
+
+/* 5. La sottolista puntata (ul) */
+ol.req-list ul {
+    width: 100%;              /* Forza la lista ad andare a capo */
+    list-style-type: disc;    /* Ripristina i pallini */
+    padding-left: 65px;       /* 45px della R + 20px di rientro extra */
+    margin-top: 8px;          /* Distanza dalla frase sopra */
+    margin-bottom: 5px;
+}
+
+/* 6. I singoli punti della sottolista */
+ol.req-list ul li {
+    display: list-item;       /* Comportamento standard con pallino */
+    margin-bottom: 5px;
+    line-height: 1.4;         /* Interlinea gradevole */
+}
+
+/* 7. Pulizia finale: assicura che i li interni non abbiano il prefisso R: */
+ol.req-list ul li::before {
+    content: none;
+}

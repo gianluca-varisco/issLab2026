@@ -36,7 +36,7 @@
 		<span>L’utente umano deve poter:</span>
 			<ul>
 				<li>specificare la configurazione iniziale della griglia del gioco</li>
-				<li>vedere l’evoluzione del gioco in forma opportuna (si veda <a href='https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#section.6.3'>Problema della vista del gioco</a> )</li>
+				<li>vedere l’evoluzione del gioco in forma opportuna (si veda <a href='https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#section.6.3'>Problema della vista del gioco</a>)</li>
 				<li>fermare e far ripartire l’evoluzione del gioco</li>
 				<li>pulire (a gioco fermo) la configurazione della griglia del gioco</li>
 			</ul>
@@ -109,7 +109,18 @@ e reattivo (voglio fare in modo che se c’è un input device che dice start e s
 <br/><br/>
 
 <h2>Problem analysis</h2>
- 
+<p>
+	In base a quanto emerso nell'analisi dei requisit, decido di organizzo il sistema con la seguente architettura logica:<br/>
+	<img src="./img/diagrammaUML.png" alt="diagramma architettura" width="75%" height="75%">
+</p>
+<p>
+	Come indicato in 
+	<a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#section.6.3" target="_blank" rel="noopener noreferrer">Il problema della vista del gioco</a>,
+	la visualizzazione del gioco non deve essere cablata nel sistema, ma deve essere garantito un disaccoppiamento tra logica e rappresentazione. A questo fine è stata introdotta
+	<a href="https://github.com/gianluca-varisco/issLab2026/blob/main/ConwayLife/Sprint1/conway26Java/src/main/java/conway/domain/IOutDev.java" target="_blank" rel="noopener noreferrer">IOutDev</a>,
+	che fa in modo che sia il dispositivo a dover implementare un contratto definito dall'applicazione: in questo modo è il dispositivo che dipende dall'applicazione e non viceversa (principio di 
+	<a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#subsection.5.7.5" target="_blank" rel="noopener noreferrer">inversione delle dipendenze</a>)
+</p>
 
 <h2>Test plans</h2> 
 
@@ -123,7 +134,12 @@ e reattivo (voglio fare in modo che se c’è un input device che dice start e s
  
 
 <h2>Deployment</h2> 
-
+<p>
+	Il deployment del sistema avviene grazie all'utilizzo di Gradle come strumetno di autmazione per la build.
+	Traminte il task jar nel file 
+	<a href="https://github.com/gianluca-varisco/issLab2026/blob/main/ConwayLife/Sprint1/conway26Java/build.gradle" target="_blank" rel="noopener noreferrer">build.gradle</a>
+	vine generato il file <b>conway26Java-1.0.jar</b>.
+</p>
  
 <h2>Maintenance</h2> 
  

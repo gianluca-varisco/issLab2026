@@ -1,0 +1,141 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="css/mystyle.css">
+<!--
+    <script type="text/javascript" src="../css/issStyle.js"></script>
+-->
+    
+</head>
+   
+<title>SistemaSJavalin_v0</title></head>
+    
+
+<body>
+<div id="top">
+<h1>AService Sprint1 - SistemaSJavalin</h1>
+</div>  
+
+<div class="body">  
+
+<h2>Introduction</h2>
+<b>Goal: </b>Realizzazione di un servizio in Java che fa il calcolo dei valori di una espressione matematica con deployment del servizio in docker usando il framework javalin
+
+<h2>Requirements</h2>
+
+ 
+<!-- <div class="remark"> -->
+<ol class="req-list">
+	<li>
+		<span>realizzare un servizio Java che calcoli i valori dell'espressione sin(x) + cos(&radic;3 * x)</span>
+	</li>
+	<li>	
+		<span>utilizzare il 
+			<a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#subsubsection*.26" target="_blank" rel="noopener noreferrer">javalin server</a>
+			per abilitare la ricezione di messaggi via WebSocket, ma anche HTTP/1 e HTTP2
+		</span>
+	</li>
+	<li><span>All'utente verrà presentata una pagina html che gli permetta di specificare la x per cui si vuole ottenere il risulato e la modalità di interazione (WebSocket, Get o Post)</span></li>
+	<li>
+		<span>il deployment dell'applicazione deve avvenire mediante Docker</span>
+	</li>
+</ol>
+
+
+<h2>Requirement analysis</h2>
+<p>
+	La realizzazione della funzione per calcolare il risultato dell'espressione data in Java è banale.
+<pre>
+	protected double eval(double x) {
+		return Math.sin(x) + Math.cos( Math.sqrt(3)*x);
+	}</pre>
+</p>
+<p>
+	La complessità sta nella gestione delle richieste di diverso tipo. Sebbene javalin permetta di gestire con codice molto simile sia le connessioni WebSocket che le interazioni HTTP,
+	le due funzionalità sono profondamente diverse:
+	<ul>
+		<li>una WebSocket stabilisce una relazione tra il client e il server che rimane attiva fino a quando il client non chiude la connessione. 
+			Da notare che Jetty, su cui si appoggia javalin, chiude automaticamente le connessioni WS se non rileva traffico dopo un certo intervallo di tempo. Per evitare ciò si può agire sul paraemtro Idle Timeout del server o inviare periodicamente dei ping di heartbeat per tenere aperta la connessione</li>
+		<li>una interazione HTTP stabilisce invece una transazione che termina quando il server invia il risultato</li>
+	</ul>
+</p>
+<p>
+	All'utente verrà presentata la seguente 
+	<a href="https://github.com/gianluca-varisco/issLab2026/tree/main/AService/Sprint1/SistemaSJavalin/src/main/resources/index.html" target="_blank" rel="noopener noreferrer">pagina html</a>
+	che presenta una sezione di input dove l'utente potrà selezioanre al x desiderata, una serie di bottoni per scegliere la modalità di comunicazione e un'area di output dove comparirà il risultato.
+</p>
+<p>
+	Per quanto riguarda la distribuzione mediante una immagine Docker, sono stati realizzati i seguenti file:
+	<a href="https://github.com/gianluca-varisco/issLab2026/tree/main/AService/Sprint1/SistemaSJavalin/sistemaSJavalin.yaml" target="_blank" rel="noopener noreferrer">sistemaSJavalin.yaml</a> e 
+	<a href="https://github.com/gianluca-varisco/issLab2026/tree/main/AService/Sprint1/SistemaSJavalin/Dockerfile" target="_blank" rel="noopener noreferrer">Dockerfile</a>.
+</p>
+
+<h2>Problem analysis</h2>
+<p> Sono dipendente dalla tecnologia di javalin, ma cerco di organizzare il codice in maniera opportuna.
+Sulla base dei principi di Separation of Concerns e Clean Architecture il sistema verrà sviluppato con la seguente infrastruttura:<br>
+<img src="./img/StrutturaBetter.png" alt="infrastruttura" width="50%" height="50%">
+</p>
+<p>
+	Il sistema avrà quindi una architettura a Layer:
+	<ol>
+		<li><b>Livello di infrastruttura</b>: qui opera javalin, gestendo i protocolli e prelevando dai messaggi le informazioni rilevanti per il livello di dominio. 
+		In questo livello è opportuno separare (logicamente) la parte di supporto alle WebSocket e la parte di supporto ad HTTP;</li>
+		<li><b>Livello di adattamento</b>: è il livello intermedio che trasforma i dati di basso livello forniti dall'infrastruttura nei dati richiesti dall'applicazione. 
+		Anche qui è opportuno separare le funzioni di utilità per le WebSocket da quelle per HTTP;</li>
+		<li><b>Livello di dominio</b>: la funzione eval vista prima definisce la business logic del sistema, indipendente da javalin e protocolli vari.</li>
+	</ol>
+</p>
+<p>
+	Come già detto, javalin gira sopra il Server Jetty. Poiché ogni volta che arriva un messaggio, Jetty
+	assegna il compito di eseguire il codice dentro onMessage a un thread preso dal suo Thread Pool, se arrivano due messaggi quasi contemporaneamente vengono prelevati e sfruttati due thread distinti.
+	<br/>Questo significa che se ho una richiesta "lenta" dovuta ad una carico computazionale più alto (simulata con un ritardo) che arriva prima e una più veloce che arriva dopo, non sarà rispettato l'ordine di arrivo nelle risposte, ma arriverà prima la risposta veloce e poi quella lenta. 
+	E' importante tenere a mente questo comportamento, perché è in contrasto con quanto avviene normalmente nelle WS, dove ci si aspetta un esecuzione sequenziale delle richieste ricevute.
+</p>
+<p>
+	Per la gestione delle richieste da parte dell'utente sono necessarie 
+	<a href="https://github.com/gianluca-varisco/issLab2026/tree/main/AService/Sprint1/SistemaSJavalin/src/main/resources/CallerBasic.js" target="_blank" rel="noopener noreferrer">tre funzioni Javascript</a>
+	collegate ai pulsanti presentati all'utente che vadano ad inviare al server le richieste come specificato.
+</p>
+
+<p>Per la realizzazione del server è stato realizzato il seguente 
+	<a href="https://github.com/gianluca-varisco/issLab2026/tree/main/AService/Sprint1/SistemaSJavalin/src/main/java/SistemaSJavalinBetter.java" target="_blank" rel="noopener noreferrer">codice</a>.
+</p>
+
+<h2>Test plans</h2> 
+
+
+
+<h2>Project</h2> 
+ 
+ 
+
+<h2>Testing</h2> 
+ 
+
+<h2>Deployment</h2> 
+
+ 
+<h2>Maintenance</h2> 
+ 
+<!-- USEFUL
+<table style="width:100%" border="1">
+<tr>
+<td style="width:50%">
+</td>
+<td></td>
+</tr>
+</table>
+-->
+	      	
+<br/><br/> 	
+</div>  
+
+<div style="background-color:rgba(86, 56, 253, 0.9); width:63%;text-align:left;color:white">
+By Gianluca Varisco email: gianluca.varisco@studio.unibo.it, 
+<!-- <img src="./img/mbot-S.jpg" alt="mbot" width="15%" height="15%"> -->
+<img src="d:\magistrale\primo_anno\2_semestre\ingegneria_dei_sistemi_software\consegna_prof\foto_per_iss.jpeg" alt="foto_per_iss" width="8%" height="8%">
+GIT repo: https://github.com/gianluca-varisco/issLab2026
+</div> 
+</body>
+</html>

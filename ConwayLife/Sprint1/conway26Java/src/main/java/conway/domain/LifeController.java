@@ -1,5 +1,4 @@
 package main.java.conway.domain;
-//import java.util.concurrent.TimeUnit;
 import unibo.basicomm23.utils.CommUtils;
 
 /*
@@ -18,7 +17,7 @@ public class LifeController implements GameController {
         this.life   = game;       
         this.outdev = outdev;
        CommUtils.outyellow("LifeController CREATED outdev="+outdev   );
-       //if( outdev != null ) outdev.displayGrid( life.getGrid() );
+       if( outdev != null ) outdev.displayGrid( life.getGrid() );
      }
     
     @Override
@@ -32,9 +31,8 @@ public class LifeController implements GameController {
 	@Override
 	public void switchCellState(int x, int y) {
 		ICell c = life.getCell(x, y); 
-		c.switchCellState( );   
-		//Perchè non:  outdev.displayCell(life.getGrid(),x,y)  ?
-		if( outdev != null ) outdev.displayGrid(life.getGrid());
+		c.switchStatus( );   
+		if( outdev != null ) outdev.displayCell(life.getGrid(), x, y);
 	}
 	
 	protected void startTheGame() {
@@ -51,7 +49,7 @@ public class LifeController implements GameController {
 	protected void clearTheGame() {
 		if( outdev != null ) outdev.display("lfctrl: clearing");
  		stopTheGame();
- 		//CommUtils.delay(500);   //prima fermo e poi ...
+ 		CommUtils.delay(500);   //prima fermo e poi ...
 		epoch = 0;
 		resetAndDisplayGrids(  );   
 	}
@@ -68,15 +66,15 @@ public class LifeController implements GameController {
     protected void play() {  
 			new Thread() {
 			public void run() {			
-				if( outdev != null ) outdev.displayGrid( life.getGrid()  ); 
+				printout("gamestarted " + life.getGrid()) ; 
 				while( running ) {
 //					try {
 //						TimeUnit.MILLISECONDS.sleep(generationTime);
 						CommUtils.delay(generationTime);
 						life.nextGeneration();
 						if( outdev != null ) outdev.displayGrid( life.getGrid()  );
-						epoch++;
-						//CommUtils.outblue("---------Epoch ---- "+epoch );
+
+						CommUtils.outblue("---------Epoch ---- "+epoch++ );
 //						boolean gridEmpty  = life.gridEmpty();
 //						boolean gridStable = life.gridStable();
 //						if( gridEmpty || gridStable ) {

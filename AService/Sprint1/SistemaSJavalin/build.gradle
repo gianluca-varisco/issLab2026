@@ -55,7 +55,7 @@ eclipse {
 }
 
 application {
-    //Define the main class for the application.
+//Define the main class for the application.
     mainClassName    = 'main.java.SistemaSJavalinBetter'
 }
 
@@ -68,6 +68,7 @@ jar {
     //Gestisci i file duplicati (evita errori di build)
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
  
 task dovesiamo {
     println("projectDir= $projectDir")

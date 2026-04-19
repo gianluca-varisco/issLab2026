@@ -1,0 +1,126 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="css/mystyle.css">
+<!--
+    <script type="text/javascript" src="../css/issStyle.js"></script>
+-->
+    
+</head>
+   
+<title>SistemaSProtoactor_v0</title></head>
+    
+
+<body>
+<div id="top">
+<h1>AService Sprint2 - SistemaSProtoactor</h1>
+</div>  
+
+<div class="body">  
+
+<h2>Introduction</h2>
+<b>Goal: </b>Refactoring dello 
+
+Sprint1 usando i protoattori
+
+<h2>Requirements</h2>
+
+ 
+<!-- <div class="remark"> -->
+<ol class="req-list">
+	<li>
+		<span>realizzare un sistema che calcoli i valori dell'espressione sin(x) + cos(&radic;3 * x) dato un input decimale x</span>
+	</li>
+	<li>	
+		<span>utilizzare il 
+			<a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#subsubsection*.26" target="_blank" rel="noopener noreferrer">javalin server</a>
+			per abilitare la ricezione di messaggi via WebSocket, ma anche HTTP/1 e HTTP2
+		</span>
+	</li>
+	<li>
+		<span>devono essere accettate anche richieste di calcolo tramite MQTT per supportare dispositivi IoT e interazioni asincrone tramite broker</span>
+	</li>
+	<li><span>la logica di business deve essere isolata in un attore che estende
+			<a href="https://github.com/ariannabuffoni/IngegneriaSistemiSoftware2026/blob/main/protoactor26/src/protoactor26/AbstractProtoactor26.java" target="_blank" rel="noopener noreferrer">AbstractProtoactor26</a>
+			presente nel progetto <i>protoactor26</i>
+	</span></li>
+	<li><span>il sistema deve distinguere tra request (a cui risponde con una reply contenente il valore calcolato), dispatch ed event</span></li>
+	<li><span>i messaggi inviati a un singolo attore devono essere elaborati in modo sequenziale (politica FIFO) tramite una coda interna</span></li>
+	<li>
+		<span>il deployment dell'applicazione deve avvenire mediante Docker</span>
+	</li>
+</ol>
+
+
+<h2>Requirement analysis</h2>
+<p>
+	La realizzazione della funzione per calcolare il risultato dell'espressione data in Java è banale.
+<pre>
+	protected double eval(double x) {
+		return Math.sin(x) + Math.cos( Math.sqrt(3)*x);
+	}</pre>
+</p>
+<p>
+	MQTT è un protocollo diverso da HTTP e nasce con l'idea che le informazioni emesse (published) su una topic da un componente software sono eventi che qualche altro componente (i subscribers) può percepire ed elaborare.
+</p>
+
+<h2>Problem analysis</h2>
+<p> 
+	L'architettura del progetto che voglio realizzare è la seguente:<br/>
+	<img src="./img/architettura_protoactor.png" alt="architettura" width="75%" height="75%">
+	<br/>L'idea è quella di introdurre un componente (AbstractProtoactorMsgdriven) che sia intrinsecamente capace di ricevere messaggi via rete e sia dotato di una struttura interna che pone in foreground la logica applicativa 
+	lasciando nascosti in background i diversi meccanismi di comunicazione via rete e sia anche capace di comportamenti autonomi (non legati a nessun messaggio).
+	La classe AbstractProtoactorMsgdriven costituisce una sorta di Micro-framework che usa l'inversione di controllo per attivare operazioni applicative di gestione dei messaggi ricevuti via HTTP, WS e MQTT e posti nella coda del worker applicativo.
+</p>
+<p>
+	I <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#section.12.1" target="_blank" rel="noopener noreferrer">Java Executors</a>
+	sono dei supporti utili per la realizzazione implicita della coppia applMsgQueue e ApplLogicWorker. Infatti, permettono di creare  "worker" che rimangono in attesa dei task che gli sono accodati mediante il metodo submit (poiché creati come SingleThread si ha la garanzia che due task non interferiscano tra loro).<br/>
+	Il progetto <a href="https://github.com/ariannabuffoni/IngegneriaSistemiSoftware2026/tree/main/protoactor26" target="_blank" rel="noopener noreferrer">protoactor26</a> mostra come si può andare a colmare questo abstraction gap con protoattori che usano i JavaExecutors.
+</p>
+<p>
+	Sulla base di ciò, per andare a fare refactoring dello Sprint1, andiamo a gestire in modo implicito il passaggio dal livello logico al livello realizzativo. 
+	<br/>Realizzo come protoattore SistemaSAsProtoactor, che conterrà la logica di business (la funzione eval). 
+	<br/> AbstractProtoactorMsgdriven sarà invece SistemaSJavalinBetter rafattorizzato con un riferimento al contesto su cui si scambiano i messaggi, che sfrutterà per andare a inviare le request dove prima faceva eval(x).
+</p>
+<p>
+	La classe CallerMqtt serve per andare a testare se il comportmento è quello atteso.
+</p>
+
+<h2>Test plans</h2> 
+
+
+
+<h2>Project</h2> 
+ 
+ 
+
+<h2>Testing</h2> 
+ 
+
+<h2>Deployment</h2> 
+
+ 
+<h2>Maintenance</h2> 
+ 
+<!-- USEFUL
+<table style="width:100%" border="1">
+<tr>
+<td style="width:50%">
+</td>
+<td></td>
+</tr>
+</table>
+-->
+	      	
+<br/><br/> 	
+</div>  
+
+<div style="background-color:rgba(86, 56, 253, 0.9); width:100%;text-align:left;color:white">
+By Arianna Buffoni email: arianna.buffoni@studio.unibo.it, 
+<!-- <img src="./img/mbot-S.jpg" alt="mbot" width="15%" height="15%"> -->
+<img src="./img/fototessera_badge.jpg" alt="foto" width="8%" height="8%">
+GIT repo: https://github.com/ariannabuffoni/IngegneriaSistemiSoftware2026.git
+</div> 
+</body>
+</html>

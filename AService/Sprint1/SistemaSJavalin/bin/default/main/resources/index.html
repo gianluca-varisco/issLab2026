@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><title>InOutPage</title></head>
+<body>
+    <h2>Calcolo: sin(x) + cos(&radic;3 * x)</h2>
+	<label>Inserisci x:</label>
+	    <input type="number" id="inputX" value="0.0">
+	    <br><br>
+
+	    <button onclick="testHTTPGet(document.getElementById('inputX').value)">Calcola (GET)</button>
+	    <button onclick="testHTTPPost(document.getElementById('inputX').value)">Calcola (POST)</button>
+	    <button onclick="callWS(document.getElementById('inputX').value)">Calcola (WS)</button>
+    
+    <div id="risultato" style="margin-top: 20px; font-weight: bold; color: blue;"></div>
+
+    <script src="CallerBasic.js"></script>
+</body>
+</html>

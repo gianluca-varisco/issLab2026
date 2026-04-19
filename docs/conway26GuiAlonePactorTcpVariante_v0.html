@@ -1,0 +1,190 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="css/mystyle.css">
+<!--
+    <script type="text/javascript" src="../css/issStyle.js"></script>
+-->
+    
+</head>
+   
+<title>conway26GuiAlonePactorTcpVariante_v0</title></head>
+    
+
+<body>
+<div id="top">
+<h1>ConwayLife Gui Alone con Pattori - Variante</h1>
+</div>  
+
+<div class="body">  
+
+<h2>Introduction</h2>
+<b>Goal: </b>Realizzazione in Java dellla Gui
+<a href='https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.6'>GAME OF LIFE DI CONWAY</a> con Pattori.
+<br/>
+<p>
+	La logica del gioco è già stata analizzata nello <a href="https://gianluca-varisco.github.io/issLab2026/conway26Java_v0.html" target="_blank" rel="noopener noreferrer">Sprint1</a>. 
+	Utiliziamo quindi il risultato ottenuto, che costituisce un sottosistema funzionante, come punto di partenza per questo nuovo lavoro (deployed in un file <b>conway26Java-1.0.jar</b>).
+	<br/>La costruzione, l'esecuzione e l'interazione di protoattori è stata realizzata con sviluppo del progetto <a href="https://github.com/gianluca-varisco/issLab2026/tree/main/protoactor26" target="_blank" rel="noopener noreferrer">protoactor26</a>.
+	E' quindi disponibile la libreria <b>protoactor26-1.0.jar</b> che verrà integrata nel progetto.
+</p>
+
+
+<h2>Requirements</h2>
+<p>
+Realizzare una variante del progetto <a href="https://github.com/gianluca-varisco/issLab2026/tree/main/conway26GuiAlonePactorTcp" target="_blank" rel="noopener noreferrer">conway26GuiAlonePactorTcp</a>
+nella ipotesi di costruire il sistema comprensivo sia di A che di S come un tutto organico, con le seguenti variazioni:
+<ol class="req-list">
+	<li>
+		<span>impostare i comandi cell e clear come request da S ad A</span>
+	</li>
+	<li>	
+		<span>presentare, dopo la prima connessione, una pagina HTML alternativa priva di pulsanti</span>
+	</li>
+	<li>
+		<span>impostare l'adattamento di A a S attraverso un pattore local ad A che operi come Sidecar.</span>
+	</li>
+</ol>
+</p>
+
+<h2>Requirement analysis</h2>
+<p>
+	Il comando cell fa sì che S mandi un messaggio ad A per indurlo a modificare lo stato corrente di uana cella. Formalizzandolo come request (come da requisito R1), vincoliamo in modo implicito A ad inviare una risposta.
+	<br>Lo stesso ragionamento può essere fatto per il comando clear, che implica che A ponga lo stato di tutte le celle a morte. Dopo questa operazione A è tenuto a rispondere al messaggio.
+</p>
+<p>
+	Il secondo requisito comporta lo sviluppo di seconda pagina di output, da fornire a tutti i non-owner, che non presenterà i pultati START, STOP, CLEAR e EXIT. Inoltre, la pressione su celle non comporterà alcun comando inviato (togliamo la componente reattiva della pagina), ma la griglia dovrà essere aggiornata con l'evoluzione del gioco.<br/>
+	Sarà compito del server tenere traccia della prima pagina che si è connessa e fornirle la pagina reattiva, dando invece la versione "ridotta" a tutti i successori.
+</p>
+<p>
+	Il terzo requisito parla di "pattern Sidecar".<br/>
+	Il patter Sidecar è un modello di progettazione utilizzato nell'architettura software, in particolare negli ambienti basati su microservizi. In questo modello, un container o un processo “sidecar” viene implementato insieme al container dell'applicazione principale per estenderne o potenziarne le funzionalità.<br/>
+	Il container sidecar opera nello stesso ambiente di esecuzione dell'applicazione principale e in genere fornisce servizi di supporto quali la registrazione degli eventi, il monitoraggio, la sicurezza o la comunicazione con altri servizi.<br/>
+	Questo modello consente al container dell'applicazione principale di concentrarsi sulle proprie funzionalità principali, delegando al sidecar le attività secondarie (registrazione degli eventi, monitoraggio, sicurezza, individuazione dei servizi o proxy di comunicazione), favorendo così la modularità, la scalabilità e la manutenibilità nei sistemi distribuiti.
+	<br/>Questo pattern viene utilizzato per evitare che la conoscenza del protocollo usato da S "inquini" il componente A, senza utilizzare un proxy. E' una concreta realizzazione del pattern logico ACL (Anti-Corruption Layer): A introduce un modulo Adapter che conosce il protocollo di S e traduce le richieste di A nel formato richiesto da S.<br/>
+	Quindi A parlerà a messaggi col Sidecar e il Sidecar parla con il servizio. Poiché un pattore può inviare messaggi messaggi ad altri pattori che fanno aprte dello stesso contesto, il Sidecar può essere un Pattore che fa aprte dello stesso contesto di A. Dobbiamo aggiungere un componente.
+</p>
+
+
+<h2>Problem analysis</h2>
+<p>
+	Si può partire con l'analisi dalla seguente architettura logica schematizzata:<br/>
+	<img src="./img/architettura_logica.png" alt="foto" width="75%" height="75%">
+</p>
+<!--come si inserisce il sidecar??-->
+<p>
+	I <u>componenti</u>, alla luce di quanto evidenziato nell'analisi dei requisiti, sono:
+	<ul>
+		<li>
+			<b>A</b>: Pattore che rappresenta l'applicazione ConwayLife, contiene quindi la logica applicativa. Questo componente (a cui diamo il nome di lifegame) richiede l'uso di un'altro componente S per creare e gestire una GUI HTML, ma non lo conosce direttamente: interagisce solo ed esclusivamente con il suo Sidecar locale attraverso il protocollo di messaggi sviluppato con 
+			<a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#subsection.9.2.1" target="_blank" rel="noopener noreferrer">IApplMessage</a>.
+		</li>
+		<li>
+			<b>Sidecar</b>: Pattore locale ad A, ovvero vive nel suo stesso contesto e che chiameremo lifeadapter. Funge da intermediario bidirezionale: riceve i dati della griglia da A e li traduce nel protocollo richiesto da S e riceve i messaggi da S, li interpreta e invia ad A comandi che può comprendere. Agisce quindi come un ponte, è il componente che garantisce il rispetto di DIP, come visto nell'analisi dei requisiti.
+		</li>
+		<li>
+			<b>S</b>: Pattore che rappresenta un servizio di I/O mediante una pagina HTML. Questo componente (denominato guiservice) richiede l'uso di un componente B per visualizzare la pagina. Riceve messaggi con Sidecar e li inoltra a B e viceversa.
+		</li>
+		<li>
+			<b>B</b>: Servizio che permette di visualizzare e di interagire con una pagina HTML.
+		</li>
+	</ul>
+</p>
+<p>
+	Andiamo ora a formalizzare le <u>interazioni</u> tra i vari componenti. Per quanto riguarda le interazioni S-B sono basate su una interconnessione tra il componente S e il componente B, realizzata tramite protocollo HTTP/WS.<br>
+	Per quanto rigurada le interazioni A-S come abbiamo visto per rispettare il DIP viene inserito un sidecar.<br/><br/>
+	Vengono formalizzati logicamente i vari messaggi scambiati.<br/><br/>
+
+	<b>A invia a Sidecar</b> (la specifica del payload GRIDSTATE viene lasciata al progettista, in quanto dipende dalla rappresenatzione della griglia):
+	<ul>
+		<li>
+			un dispatch per informare S dello stato corrente della griglia durante l'evoluzione del gioco (al temine di ogni Epoch), che formalizzo come: <pre>msg(display, dispatch, lifegame, lifeadapter, GRIDSTATE, N)</pre>
+		</li>
+		<li>
+			una reply alle request changecell e cmdclear di S, che formalizzo come: <pre>msg(cellchanged, reply, lifegame, lifeadapter, cell(X,Y,done), N)</pre><pre>msg(doneclear, reply, lifegame, lifeadapter, GRIDSTATE, N)</pre>
+		</li>
+	</ul>
+
+	<b>Sidecar invia a S e A</b>: inoltra i messaggi ricevuti, adattando il formato al protocollo del destinatario.
+	</ul>
+	
+	<b>S invia a Sidecar</b> (si ricorda che non riteniamo opportuno che S conosca il significato dei comadi e quindi funge solo da tramite tra il browser e l'applicazione): 
+	<ul>
+		<li>
+			una request per indurre A a modificare lo stato corrente di una cella, che formalizziamo come: <pre>msg(changecell, request, guiservice, lifegame, cell(X,Y), N)</pre>
+		</li>
+		<li>
+			una request per indurre A a resettare la griglia di gioco (comando clear), che formalizziamo come: <pre>msg(cmdclear, request, guiservice, lifegame, clear, N)</pre>
+		</li>
+		<li>
+			un dispatch per indurre A a fermare/riattivare il gioco o a interrompere la connessione, che formalizziamo come: <pre>msg(cmd, dispatch, guiservice, lifegame, CMD, N)	//CMD=start|stop|exit</pre>
+		</li>
+	</ul>
+	
+	<b>S invia a B</b>:
+	S "parla" con la pagina mediante dei messaggi-stringa, inviando:
+	<ul>
+		<li>
+			un messaggio con l'indicazione del nome da attribuire alla pagina, appena questa si connette. Sta ad S fornire la pagina non reattiva ai non owner.
+		</li>
+		<li>
+			un messaggio con l'indicazione del nuovo stato della griglia, che può essere granulare o globale (la definizione di questo dettaglio è lasciata al progettista).
+		</li>
+	</ul>
+
+	<b>B invia a S</b>: La pagina deve "parlare" con il linguaggio (evoluto) del servizio S, inviando:
+	<ul>
+		<li>
+			un messaggio con l'indicazione del pulsante premuto (start|stop|clear|exit) premuto. Formalizzo con il seguente dispatch per start, stop e exit: <pre>msg(cmd, dispatch, caller1, guiservice, CMD, N)	//CMD=start|stop|exit</pre>
+			Formalizzo con la seguente request il comando clear: <pre>msg(cmdclear, request, caller1, guiservice, clear, N)</pre>
+		</li>
+		<li>
+			una request con l'indicazione della cella premuta dell'utente, che formalizzo nel seguente modo: <pre>msg(changecell, request, caller1, guiservice, cell(X,Y), N)</pre>
+		</li>
+	</ul>
+	S deve "girare" l'elaborazione di questi messaggi (cambiando mittente e destinatario) alla applicazione A.
+</p>
+
+
+<h2>Test plans</h2> 
+
+
+
+<h2>Project</h2> 
+ 
+ 
+
+<h2>Testing</h2> 
+ 
+
+<h2>Deployment</h2> 
+<p>
+	
+</p> 
+
+
+ 
+<h2>Maintenance</h2> 
+ 
+<!-- USEFUL
+<table style="width:100%" border="1">
+<tr>
+<td style="width:50%">
+</td>
+<td></td>
+</tr>
+</table>
+-->
+	      	
+<br/><br/> 	
+</div>  
+
+<div style="background-color:rgba(86, 56, 253, 0.9); width:63%;text-align:left;color:white">
+By Gianluca Varisco email: gianluca.varisco@studio.unibo.it, 
+<!-- <img src="./img/mbot-S.jpg" alt="mbot" width="15%" height="15%"> -->
+<img src="d:\magistrale\primo_anno\2_semestre\ingegneria_dei_sistemi_software\consegna_prof\foto_per_iss.jpeg" alt="foto_per_iss" width="8%" height="8%">
+GIT repo: https://github.com/gianluca-varisco/issLab2026
+</div>  
+</body>
+</html>
