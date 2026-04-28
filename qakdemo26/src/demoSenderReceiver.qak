@@ -1,0 +1,54 @@
+System qakdemo26
+
+// dichiarare prima degli attori tutti i messaggi scambiati (richiesta del linguaggio)
+Dispatch msg1 : msg1(ARG)       "da sender a receiver"
+
+// definizione del contesto (necessario, altrimenti non succede niente)
+Context ctxqakdemo26 ip [host="localhost" port=8010]
+
+// definizione degli attori (ogni attore deve essere legato ad un contesto)
+QActor receiver context ctxqakdemo26{
+	// codice kotlin scritto tra [# #] -> operazione che azzera il file log
+//		[#  
+//		   clearlog("./logs/qakdemo26.log") 	//vedi src/main/resources/logback.xml -> file che definisce le caratteristiche del logging
+//		#]
+	   
+	State s0 initial { 	    
+//		[# logger.info(  "${currentState.stateName} handling $currentMsg"  ) #]
+		printCurrentMessage color red
+		discardMsg Off  //Off is default: memorizzo i messaggi non attesi 			  
+ 	}      
+ 	Goto waitForMsgs   
+ 	
+ 	State waitForMsgs{
+  		printCurrentMessage color blue
+ 		[# logger.info(  "${currentState.stateName} handling $currentMsg"  ) #]
+ 	}
+ 	Transition t0 whenMsg msg1 -> received
+
+ 	State received{ 
+ 		printCurrentMessage color blue
+// 		[#  logger.info(  "${currentState.stateName} handling $currentMsg"  ) #]
+ 		onMsg( msg1:msg1(ARG) ){
+ 			println("$name in received | msg1:msg1(${payloadArg(0)})") color blue
+ 			delay 1000  
+ 		}
+   	}  
+   	Goto waitForMsgs   
+}    
+      
+QActor sender context ctxqakdemo26{
+//	[# var emitEvents = true   
+//	   var DT         = 1000L; 
+// 	#]
+	State s0 initial { 	
+//		[# logger.info(  "${currentState.stateName} handling $currentMsg"  ) #]
+		println( "$name sends msg1: msg1(1)... ") color green
+//		[# logger.info(  "${currentState.stateName} sending msg1:msge1(1)"  ) #]
+ 		forward receiver -m msg1 : msg1(1)
+ 		delay 1000
+		println( "$name sends msg1: msg1(2)... ") color green
+//		[# logger.info(  "${currentState.stateName} sending msg1:msge1(2)"  ) #]
+		forward receiver -m msg1 : msg1(2)
+	}
+}
