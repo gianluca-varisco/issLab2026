@@ -60,7 +60,7 @@ frequenza (costante) propria.
 
 <h3>Architettura Logica</h3>
 <p>
-    Il sistema viene modellato tramite il metamodello QAK come un insieme di attori:
+    Il <a href="https://github.com/gianluca-varisco/issLab2026/blob/main/fireflysynch/src/firefly_v1_evento.qak" target="_blank" rel="noopener noreferrer">sistema</a> viene modellato tramite il metamodello QAK come un insieme di attori:
     <ul>
         <li><b>Creator:</b> Attore coordinatore responsabile della generazione dinamica delle lucciole e della gestione del countdown di 10 secondi. Al termine, emette l'evento globale.</li>
         <li><b>Firefly:</b> Attore reattivo (<code>dynamicOnly</code>) che implementa una FSM sensibile a timer interni (timeout) ed eventi esterni.</li>
