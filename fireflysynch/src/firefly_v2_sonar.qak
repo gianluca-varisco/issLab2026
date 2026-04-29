@@ -1,0 +1,89 @@
+System firefly_sonar_sync
+
+Dispatch cellstate : cellstate(X,Y,COLOR)
+Event startSync    : startSync(PERIOD)  
+Event stopSync     : stopSync(0)        
+
+Context ctxfirefly ip [ host="localhost"      port=8040 ] 
+Context ctxgrid    ip [ host="127.0.0.1"  port=8050 ]
+
+ExternalQActor griddisplay context ctxgrid
+
+/* * ATTORE SONAR 
+ */
+QActor sonar context ctxfirefly {
+	[# var DMIN = 50 #]
+	State s0 initial {
+		println("SONAR | Inizializzato. DMIN=$DMIN")
+	}
+	Goto detect
+	
+	State detect {
+		[# var Distanza = java.util.Random().nextInt(10, 100) #]
+		if [# Distanza < DMIN #] {
+			println("SONAR | Ostacolo vicino! Distanza=$Distanza") color red
+			emit startSync : startSync(1000)
+		} else {
+			println("SONAR | Nessun ostacolo. Distanza=$Distanza") color green
+			emit stopSync : stopSync(0)
+		}
+		delay 5000 
+	}
+	Goto detect
+}
+
+/* * ATTORE FIREFLY
+ */
+QActor firefly context ctxfirefly dynamicOnly {     
+	[#   
+	   var X = 0; var Y = 0; var Timer = 1000L 
+	   
+	   fun setCellCoords() {
+     		val coordY = name.replace("firefly_","")    
+      		Y = coordY.toInt()        
+  		}		
+	   fun setRandomTimer() {
+	   		Timer = java.util.Random().nextLong(1000L, 3000L)
+	   }
+ 	#] 
+	
+	State s0 initial {
+		[# setCellCoords(); setRandomTimer() #]
+		println("$name | Partenza. Random Timer=$Timer")
+	}
+	Goto flash
+	
+	State flash {
+ 		forward griddisplay -m cellstate : cellstate($X, $Y, 1) 				
+ 		delay 500	
+ 		forward griddisplay -m cellstate : cellstate($X, $Y, 0) 				
+	}
+	Transition t0 
+		whenTimeVar Timer   -> flash
+		whenEvent startSync -> handleStartSync
+		whenEvent stopSync  -> handleStopSync
+	
+	State handleStartSync {
+		onMsg( startSync : startSync(P) ) {
+			[# Timer = payloadArg(0).toLong() #]
+			println("$name | MODO SINCRONIZZATO") color cyan
+		}
+	}
+	Goto flash 
+	
+	State handleStopSync {
+		[# setRandomTimer() #]
+		println("$name | MODO RANDOM") color magenta
+	}
+	Goto flash
+}
+
+/* * ATTORE CREATOR
+ */
+QActor creator context ctxfirefly {
+	State s0 initial {    
+		create firefly _"1" 
+		create firefly _"2" 
+		create firefly _"3"
+	} 
+}

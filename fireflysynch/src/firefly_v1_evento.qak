@@ -1,0 +1,64 @@
+//Questo è un modello dell'analista
+System firefly_sync_event
+
+// Dichiarazione dei messaggi e degli eventi
+Dispatch cellstate : cellstate(X,Y,COLOR)
+Event sync         : sync(PERIOD)
+
+Context ctxfirefly ip [ host="localhost"      port=8040 ] 
+Context ctxgrid    ip [ host="127.0.0.1"  port=8050 ]
+
+ExternalQActor griddisplay context ctxgrid
+
+QActor creator context ctxfirefly {
+	State s0 initial {    
+		delay 500 
+		create firefly _"1" 
+		create firefly _"2" 
+		create firefly _"3"
+		
+		// Attende 10 secondi
+		delay 10000
+		println("CREATOR: Emissione evento di sincronizzazione globale!") color red
+		
+		// Un unico comando per tutte le lucciole presenti e future
+		emit sync : sync(1500)
+	} 
+}   
+
+QActor firefly context ctxfirefly dynamicOnly {     
+	[#   
+	   var X = 0
+	   var Y = 0
+	   var Timer = 500L 
+	   
+	   fun setCellCoords() {
+     		val coordY = name.replace("firefly_","")    
+      		Y = coordY.toInt()        
+  		}		
+ 	#] 
+	
+	State s0 initial {
+		[# setCellCoords() #]
+		[# Timer = java.util.Random().nextLong(1000L, 3000L) #]  
+		println("$name | Partenza asincrona: Timer=$Timer") color magenta
+	}
+	Goto flash
+	
+	State flash {
+ 		forward griddisplay -m cellstate : cellstate($X, $Y, 1) 				
+ 		delay 500	
+ 		forward griddisplay -m cellstate : cellstate($X, $Y, 0) 				
+	}
+	Transition t0 
+		whenTimeVar Timer -> flash
+		whenEvent sync    -> handleSync // Ora reagisce all'evento globale
+	
+	State handleSync {
+		onMsg( sync : sync(T) ) { // onMsg funziona anche per gli eventi in QAK
+			[# Timer = payloadArg(0).toLong() #] 
+			println("$name | SINCRONIZZATO tramite EVENTO a Periodo=$Timer") color cyan
+		}
+	}
+	Goto flash 
+}

@@ -1,0 +1,67 @@
+//Questo è un modello dell'analista
+System firefly_sync
+
+Dispatch cellstate : cellstate(X,Y,COLOR)
+Dispatch sync      : sync(PERIOD)
+
+Context ctxfirefly ip [ host="localhost"      port=8040 ] 
+Context ctxgrid    ip [ host="127.0.0.1"  port=8050 ]
+
+ExternalQActor griddisplay context ctxgrid
+
+QActor creator context ctxfirefly {
+	State s0 initial {    
+		delay 500 
+		create firefly _"1" 
+		create firefly _"2" 
+		create firefly _"3"
+		
+		// Attende 10 secondi prima di sincronizzare
+		delay 10000
+		println("CREATOR: Invio segnale di sincronizzazione!") color red
+		// Invia il messaggio di sync a tutte le lucciole create
+		[# 
+			forward("sync", "sync(1500)", "firefly_1") 
+			forward("sync", "sync(1500)", "firefly_2") 
+			forward("sync", "sync(1500)", "firefly_3") 
+		#]
+	} 
+}   
+
+QActor firefly context ctxfirefly dynamicOnly {     
+	[#   
+	   var X = 0
+	   var Y = 0
+	   var Timer = 500L 
+	   
+	   fun setCellCoords() {
+     		val coordY = name.replace("firefly_","")    
+      		Y = coordY.toInt()        
+  		}		
+ 	#] 
+	
+	State s0 initial {
+		[# setCellCoords() #]
+		// Inizialmente frequenza casuale (costante per ogni lucciola)
+		[# Timer = java.util.Random().nextLong(1000L, 3000L) #]  
+		println("$name | Partenza asincrona: Timer=$Timer") color magenta
+	}
+	Goto flash
+	
+	State flash {
+ 		forward griddisplay -m cellstate : cellstate($X, $Y, 1) 				
+ 		delay 500	
+ 		forward griddisplay -m cellstate : cellstate($X, $Y, 0) 				
+	}
+	Transition t0 
+		whenTimeVar Timer -> flash
+		whenMsg sync      -> handleSync // Ascolta il segnale di sincronizzazione
+	
+	State handleSync {
+		onMsg( sync : sync(T) ) {
+			[# Timer = payloadArg(0).toLong() #] // Imposta il nuovo periodo comune
+			println("$name | SINCRONIZZATO a Periodo=$Timer") color cyan
+		}
+	}
+	Goto flash // Ricomincia il ciclo immediatamente per allinearsi
+}
