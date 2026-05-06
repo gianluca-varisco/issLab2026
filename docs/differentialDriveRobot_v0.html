@@ -1,0 +1,108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="css/mystyle.css">
+<!--
+    <script type="text/javascript" src="../css/issStyle.js"></script>
+-->
+    
+</head>
+   
+<title>Differential Drive Robot</title></head>
+    
+
+<body>
+<div id="top">
+<h1>Differential Drive Robot</h1>
+</div>  
+
+<div class="body">  
+
+<h2>Introduction</h2>
+<b>Goal: </b>Realizzazione di
+<a href='https://anatali.github.io/issLab2026/LectureBologna2026.html'>DIFFERENTIAL DRIVE ROBOT</a> limitatamente all'analisi dei requisiti
+ 
+<h2>Requirements</h2>
+<p>
+    <p>
+        Costruire un sistema software che comanda un Differential Drive Robot (DDR) in modo che, 
+        partendo dalla posizione iniziale HOME, il robot si sposti lungo il perimetro di una stanza rettangolare vuota. 
+        Il DDR si deve fermare quando tornato in HOME.
+    </p>
+
+    <p>
+        Il DDR è anche sensibile ai dati rilevati da un Radar.
+        Quando il Radar rileva un 'intruso' a una distanza minore di una distanza prefissata <code>DMIN</code>:
+    </p>
+    
+    <ul>
+        <li>se il DDR si sta muovendo, il DDR si ferma fino a che il Radar non rileva più un 'intruso' così vicino</li>
+        <li>se il DDR è fermo in HOME, il DDR ruota su sè stesso fino a che un 'intruso' così vicino scompare</li>
+    </ul>
+</p>
+
+
+<h2>Requirement analysis</h2>
+<p>
+    L'analisi dei requisiti mira a chiarire le astrazioni software necessarie e le interazioni tra il robot e l'ambiente:
+    <ul>
+        <li><b>Differential Drive Robot (DDR):</b> Entità autonoma e proattiva capace di muoversi nello spazio applicando velocità angolari differenziate alle ruote. Dal punto di vista del software, è un <b>attore</b> che esegue un piano di movimento sequenziale (perimetro).</li>
+        <li><b>HOME:</b> Punto di riferimento spaziale che funge da condizione di terminazione del piano. Deve essere formalizzato come un'area di prossimità o una coordinata specifica (0,0) nel sistema di riferimento locale.</li>
+        <li><b>Radar:</b> Dispositivo di input (sensore) modellato come un produttore di flussi di dati. La natura del rilevamento richiede un meccanismo di <b>evento broadcast</b> (es. <code>Event intruder : intruder(DISTANCE)</code>) per permettere al robot di reagire senza polling bloccante.</li>
+        <li><b>DMIN:</b> Valore soglia prefissato che funge da discriminante logica per il cambio di stato della FSM (Finite State Machine) del robot.</li>
+        <li><b>Comportamento Reattivo (Preemption):</b> 
+            <ul>
+                <li>Se il robot è in movimento, il rilevamento di un intruso deve causare una <b>preemption</b> immediata sul piano di navigazione corrente, forzando uno stato di <code>Halt</code>.</li>
+                <li>Se il robot è in HOME, l'evento intruso attiva un comportamento di <b>Spinning</b> (rotazione sul proprio asse), che persiste finché la condizione <code>distanza < DMIN</code> rimane vera.</li>
+            </ul>
+        </li>
+    </ul>
+</p>
+
+
+<h2>Problem analysis</h2>
+<p>
+
+</p>
+
+
+<h2>Test plans</h2> 
+
+
+
+<h2>Project</h2> 
+ 
+ 
+
+<h2>Testing</h2> 
+ 
+
+<h2>Deployment</h2> 
+<p>
+
+</p>
+ 
+<h2>Maintenance</h2> 
+ 
+<!-- USEFUL
+<table style="width:100%" border="1">
+<tr>
+<td style="width:50%">
+</td>
+<td></td>
+</tr>
+</table>
+-->
+	      	
+<br/><br/> 	
+</div>  
+
+<div style="background-color:rgba(86, 56, 253, 0.9); width:63%;text-align:left;color:white">
+By Gianluca Varisco email: gianluca.varisco@studio.unibo.it, 
+<!-- <img src="./img/mbot-S.jpg" alt="mbot" width="15%" height="15%"> -->
+<img src="d:\magistrale\primo_anno\2_semestre\ingegneria_dei_sistemi_software\consegna_prof\foto_per_iss.jpeg" alt="foto_per_iss" width="8%" height="8%">
+GIT repo: https://github.com/gianluca-varisco/issLab2026
+</div> 
+</body>
+</html>
