@@ -1,0 +1,130 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="css/mystyle.css">
+<!--
+    <script type="text/javascript" src="../css/issStyle.js"></script>
+-->
+    
+</head>
+   
+<title>fireflysynch</title></head>
+    
+
+<body>
+<div id="top">
+<h1>FireflySynch v1</h1>
+</div>  
+
+<div class="body">  
+
+<h2>Introduction</h2>
+<b>Goal: </b>Realizzazione in Java del
+<a href='https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#section.24.6'>Fireflysynch</a> limitatamente al requisito 1
+ 
+<h2>Requirements</h2>
+
+<p>
+Costruire il simulatore di un sistema costituito da 3 lucciole. Inizialmente, le lucciole lampeggiamo ciascuna con una
+frequenza (costante) propria.
+<ol class="req-list">
+	<li>
+		<span>dopo 10 secondi le lucciole devono lampeggiare in modo sincronizzato</span>
+	</li>
+	<li>
+		<span>il sistema è dotato anche di un sonar . Quando il sonar rileva un ostacolo a una distanza minore di una distanza
+		prefissata DMIN, le lucciole devono lampeggiare in modo sincronizzato. Quando la distanza dell’ostacolo
+		(ri)supera DMIN, le lucciole tornano a lampeggiare in modo random</span>
+	</li>
+</ol>
+</p>
+
+<h2>Requirement analysis</h2>
+<p>
+	    L'analisi dei requisiti mira a chiarire le entità coinvolte e i vincoli temporali del sistema per il primo requisito.
+	    <ul>
+	        <li><b>Firefly (Lucciola):</b> Entità autonoma e proattiva capace di emettere un segnale luminoso (flash). Inizialmente ha un periodo T_i costante ma differente per ogni istanza, scelto casualmente.</li>
+	        <li><b>Sincronizzazione:</b> Stato collettivo in cui tutte le lucciole emettono il flash simultaneamente, condividendo frequenza e fase.</li>
+	        <li><b>Trigger Temporale:</b> La transizione dal comportamento asincrono a quello sincronizzato deve avvenire esattamente dopo 10.000 ms.</li>
+	        <li><b>Segnale di Sincronizzazione:</b> Formalizzato come un <b>Evento</b> (<code>Event sync</code>). Si sceglie l'evento in quanto stimolo ambientale broadcast che non richiede all'emittente la conoscenza puntuale dei destinatari (disaccoppiamento).</li>
+	    </ul>
+</p>
+
+
+
+<h2>Problem analysis</h2>
+<p>
+    L'analisi si focalizza sulla transizione da una logica proattiva autonoma a una reattiva coordinata, evidenziando le seguenti criticità tecniche:
+</p>
+
+<h3>Architettura Logica</h3>
+<p>
+    Il <a href="https://github.com/gianluca-varisco/issLab2026/blob/main/fireflysynch/src/firefly_v1_evento.qak" target="_blank" rel="noopener noreferrer">sistema</a> viene modellato tramite il metamodello QAK come un insieme di attori:
+    <ul>
+        <li><b>Creator:</b> Attore coordinatore responsabile della generazione dinamica delle lucciole e della gestione del countdown di 10 secondi. Al termine, emette l'evento globale.</li>
+        <li><b>Firefly:</b> Attore reattivo (<code>dynamicOnly</code>) che implementa una FSM sensibile a timer interni (timeout) ed eventi esterni.</li>
+    </ul>
+</p>
+
+<h3>Sincronizzazione di Fase</h3>
+<p>
+    Un problema rilevato è che impostare lo stesso periodo non garantisce la sincronia visiva se le lucciole si trovano in punti diversi del loro ciclo di attesa locale.
+    <div class="remark">
+        <b>Soluzione:</b> La ricezione dell'evento <code>sync</code> deve causare una preemption sul timer locale. L'attore deve interrompere il <code>delay</code> in corso e saltare immediatamente allo stato di <code>flash</code>. In questo modo si allinea istantaneamente la fase di tutti i componenti.
+    </div>
+</p>
+
+<h3>Formalizzazione dei Messaggi</h3>
+<pre>
+Event sync : sync(PERIOD)           // Segnale broadcast di sincronizzazione
+Dispatch cellstate : cellstate(X,Y,C) // Aggiornamento GUI esterna
+</pre>
+
+<h3>Logica delle Transizioni</h3>
+<p>
+    La lucciola gestisce la duplice natura del comportamento (autonomo vs coordinato) tramite la seguente struttura di transizione:
+</p>
+<pre>
+Transition t0 
+    whenTimeVar Timer -> flash    // Percorso proattivo (fase asincrona)
+    whenEvent sync    -> handleSync // Percorso reattivo (fase sincronizzata)
+</pre>
+
+<h2>Test plans</h2> 
+
+
+
+<h2>Project</h2> 
+ 
+ 
+
+<h2>Testing</h2> 
+ 
+
+<h2>Deployment</h2> 
+
+ 
+<h2>Maintenance</h2> 
+ 
+<!-- USEFUL
+<table style="width:100%" border="1">
+<tr>
+<td style="width:50%">
+</td>
+<td></td>
+</tr>
+</table>
+-->
+	      	
+<br/><br/> 	
+</div>  
+
+<div style="background-color:rgba(86, 56, 253, 0.9); width:63%;text-align:left;color:white">
+By Gianluca Varisco email: gianluca.varisco@studio.unibo.it, 
+<!-- <img src="./img/mbot-S.jpg" alt="mbot" width="15%" height="15%"> -->
+<img src="d:\magistrale\primo_anno\2_semestre\ingegneria_dei_sistemi_software\consegna_prof\foto_per_iss.jpeg" alt="foto_per_iss" width="8%" height="8%">
+GIT repo: https://github.com/gianluca-varisco/issLab2026
+</div> 
+</body>
+</html>
