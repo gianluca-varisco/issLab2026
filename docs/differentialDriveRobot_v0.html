@@ -1,15 +1,9 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-
 <link rel="stylesheet" type="text/css" href="css/mystyle.css">
-<!--
-    <script type="text/javascript" src="../css/issStyle.js"></script>
--->
-    
+<title>Differential Drive Robot</title>
 </head>
-   
-<title>Differential Drive Robot</title></head>
     
 
 <body>
@@ -25,82 +19,149 @@
  
 <h2>Requirements</h2>
 <p>
-    <p>
-        Costruire un sistema software che comanda un Differential Drive Robot (DDR) in modo che, 
-        partendo dalla posizione iniziale HOME, il robot si sposti lungo il perimetro di una stanza rettangolare vuota. 
-        Il DDR si deve fermare quando tornato in HOME.
-    </p>
-
-    <p>
-        Il DDR è anche sensibile ai dati rilevati da un Radar.
-        Quando il Radar rileva un 'intruso' a una distanza minore di una distanza prefissata <code>DMIN</code>:
-    </p>
-    
-    <ul>
-        <li>se il DDR si sta muovendo, il DDR si ferma fino a che il Radar non rileva più un 'intruso' così vicino</li>
-        <li>se il DDR è fermo in HOME, il DDR ruota su sè stesso fino a che un 'intruso' così vicino scompare</li>
-    </ul>
+    Costruire un sistema software che comanda un Differential Drive Robot (DDR) in modo che, 
+    partendo dalla posizione iniziale HOME, il robot si sposti lungo il perimetro di una stanza rettangolare vuota. 
+    Il DDR si deve fermare quando tornato in HOME.
 </p>
+
+<p>
+    Il DDR è anche sensibile ai dati rilevati da un Radar.
+    Quando il Radar rileva un 'intruso' a una distanza minore di una distanza prefissata <code>DMIN</code>:
+</p>
+
+<ul>
+    <li>se il DDR si sta muovendo, il DDR si ferma fino a che il Radar non rileva più un 'intruso' così vicino</li>
+    <li>se il DDR è fermo in HOME, il DDR ruota su sè stesso fino a che un 'intruso' così vicino scompare</li>
+</ul>
 
 
 <h2>Requirement analysis</h2>
 <p>
     L'analisi dei requisiti mira a chiarire le astrazioni software necessarie e le interazioni tra il robot e l'ambiente:
-    <ul>
-        <li><b>Differential Drive Robot (DDR):</b> Entità autonoma e proattiva capace di muoversi nello spazio applicando velocità angolari differenziate alle ruote. Dal punto di vista del software, è un <b>attore</b> che esegue un piano di movimento sequenziale (perimetro).</li>
-        <li><b>HOME:</b> Punto di riferimento spaziale che funge da condizione di terminazione del piano. Deve essere formalizzato come un'area di prossimità o una coordinata specifica (0,0) nel sistema di riferimento locale.</li>
-        <li><b>Radar:</b> Dispositivo di input (sensore) modellato come un produttore di flussi di dati. La natura del rilevamento richiede un meccanismo di <b>evento broadcast</b> (es. <code>Event intruder : intruder(DISTANCE)</code>) per permettere al robot di reagire senza polling bloccante.</li>
-        <li><b>DMIN:</b> Valore soglia prefissato che funge da discriminante logica per il cambio di stato della FSM (Finite State Machine) del robot.</li>
-        <li><b>Comportamento Reattivo (Preemption):</b> 
-            <ul>
-                <li>Se il robot è in movimento, il rilevamento di un intruso deve causare una <b>preemption</b> immediata sul piano di navigazione corrente, forzando uno stato di <code>Halt</code>.</li>
-                <li>Se il robot è in HOME, l'evento intruso attiva un comportamento di <b>Spinning</b> (rotazione sul proprio asse), che persiste finché la condizione <code>distanza < DMIN</code> rimane vera.</li>
-            </ul>
-        </li>
-    </ul>
 </p>
+
+<ul>
+    <li>
+        <b>HOME:</b> 
+        <p>
+            Per modellare rigorosamente la posizione HOME, intesa come punto di origine e di terminazione del percorso perimetrale del robot (DDR), è necessario innanzitutto definire analiticamente lo spazio d'azione. La stanza può essere rappresentata come un rettangolo nel piano euclideo ℝ², caratterizzato da una base B e un'altezza H espresse in metri.
+        </p>
+
+        <p>
+            Tuttavia, poiché il robot non è un'entità puntiforme ma occupa una superficie fisica — che assumiamo per semplicità di forma quadrata con lato R — risulta vantaggioso adottare una discretizzazione dello spazio.
+        </p>
+
+        <p>
+            <b>Unità Robotica e Griglia:</b> Introduciamo il concetto di "unità robotica" come cella elementare della scacchiera. Dividendo le dimensioni della stanza per l'ingombro del robot (R), lo spazio viene mappato su una griglia bidimensionale dove ogni cella (i, j) rappresenta un'area di dimensione R × R.
+        </p>
+
+        <p>
+            <b>Definizione di HOME:</b> In questo modello a griglia, la posizione HOME non è più una coordinata infinitesima, ma viene formalizzata come una cella specifica e predefinita. Essa rappresenta l'area unitaria di stazionamento iniziale e finale, garantendo che il robot sia interamente contenuto entro i confini della cella stessa.
+        </p>
+
+        <p>
+            Questa astrazione trasforma il problema del movimento continuo in un problema di navigazione su grafo o matrice, semplificando la computazione del percorso lungo il perimetro.
+        </p>
+    </li>
+
+    <li>
+        <b>Radar:</b> 
+        <p>
+            Il Radar è concepito come un'entità proattiva deputata al monitoraggio costante dell'intorno del DDR. La sua funzione primaria consiste nel rilevamento di "intrusi" o ostacoli situati entro una soglia critica di sicurezza, definita come D<sub>MIN</sub>.
+        </p>
+
+        <p>
+            Dal punto di vista informativo, la proprietà fondamentale del Radar è la generazione del dato D (distanza rilevata in metri). Per integrare questa entità all'interno dell'architettura software basata sul metamodello QAK, il Radar viene formalizzato come un attore.
+        </p>
+
+        <p><b>Strategie di Comunicazione:</b></p>
+        <p>Al fine di rendere i dati fruibili dal sistema e permettere al DDR di adattare il proprio comportamento dinamico, si profilano due opzioni di formalizzazione:</p>
+
+        <p>
+            <b>Opzione 1: Modello ad Eventi (Push Communication)</b><br/>
+            In questo scenario, il radar comunica in autonomia la distanza rilevata tramite un evento. Questa scelta è dettata dal fatto che il radar non conosce (e non deve conoscere) i potenziali destinatari dell'informazione, garantendo un basso accoppiamento tra i componenti.
+        </p>
+
+        <p>
+            <b>Opzione 2: Modello Request-Response (Pull Communication)</b><br/>
+            In alternativa, il radar può comunicare la distanza rilevata esclusivamente come risposta a una specifica richiesta del sistema. In questo caso, l'attore viene formalizzato per reagire a sollecitazioni esterne, fornendo il dato solo quando necessario.
+        </p>
+    </li>
+
+    <li>
+        <b>Differential Drive Robot (DDR):</b> 
+        <p>
+            Il Differential Drive Robot (DDR) è modellato come un'entità puramente reattiva, priva di logica decisionale autonoma o stati interni complessi. Esso funge da mero attuatore, il cui scopo è l'esecuzione passiva di comandi ricevuti dal sistema di controllo supervisore.
+        </p>
+
+        <p>
+            Tale caratterizzazione deriva direttamente dalle specifiche fornite dal committente, il quale richiede lo sviluppo di un software di comando per un hardware già esistente. La natura del componente è ulteriormente definita dai vincoli del software predefinito (DDR), che limita le capacità operative del robot a un set ristretto di azioni atomiche.
+        </p>
+
+        <p><b>Capacità Operative:</b></p>
+        <ul>
+            <li>Traslazione lineare: movimento in avanti lungo l'asse longitudinale.</li>
+            <li>Rotazione assiale: rotazione sul proprio asse con un angolo predefinito di 90°.</li>
+        </ul>
+
+        <p>
+            Dal punto di vista dell'architettura software, il DDR viene formalizzato come un'interfaccia di attuazione che espone questi servizi elementari a componenti di più alto livello.
+        </p>
+    </li>
+
+    <li>
+        <b>MIND:</b> 
+        <p>
+            Il componente Mind costituisce l'unità decisionale e logica del sistema, deputata al controllo e al coordinamento del DDR in conformità alle specifiche di progetto. Il suo compito primario è la gestione del ciclo di vita della missione lungo il perimetro della stanza.
+        </p>
+
+        <p>
+            Oltre alla pianificazione del movimento, Mind integra la logica di monitoraggio ambientale interfacciandosi con il componente Radar. Mind riceve il dato sulla distanza D e lo confronta con la soglia critica D<sub>MIN</sub>.
+        </p>
+
+        <p><b>Gestione degli stati di allarme:</b></p>
+        <p>
+            Al rilevamento di un "intruso" (D < D<sub>MIN</sub>), Mind attiva una procedura di gestione delle emergenze:
+        </p>
+
+        <p>
+            <b>1. Stato di Movimento:</b> Se l'allarme interviene mentre il DDR è in movimento, Mind deve comandare l'arresto immediato del robot.
+        </p>
+
+        <p>
+            <b>2. Stato di Stasi (HOME):</b> Se l'allarme viene ricevuto mentre il DDR è fermo in HOME, Mind impone al robot una rotazione continua sul proprio asse.
+        </p>
+
+        <p>
+            Tale comportamento reattivo persiste finché la condizione di pericolo non decade. Una volta ripristinata la sicurezza, Mind riprende la missione dal punto esatto in cui era stata sospesa.
+        </p>
+    </li>
+</ul>
 
 
 <h2>Problem analysis</h2>
-<p>
-
-</p>
+<p></p>
 
 
 <h2>Test plans</h2> 
 
 
-
 <h2>Project</h2> 
- 
  
 
 <h2>Testing</h2> 
- 
+
 
 <h2>Deployment</h2> 
-<p>
-
-</p>
+<p></p>
  
 <h2>Maintenance</h2> 
  
-<!-- USEFUL
-<table style="width:100%" border="1">
-<tr>
-<td style="width:50%">
-</td>
-<td></td>
-</tr>
-</table>
--->
-	      	
-<br/><br/> 	
+<br/><br/>  
 </div>  
 
 <div style="background-color:rgba(86, 56, 253, 0.9); width:63%;text-align:left;color:white">
 By Gianluca Varisco email: gianluca.varisco@studio.unibo.it, 
-<!-- <img src="./img/mbot-S.jpg" alt="mbot" width="15%" height="15%"> -->
 <img src="d:\magistrale\primo_anno\2_semestre\ingegneria_dei_sistemi_software\consegna_prof\foto_per_iss.jpeg" alt="foto_per_iss" width="8%" height="8%">
 GIT repo: https://github.com/gianluca-varisco/issLab2026
 </div> 
