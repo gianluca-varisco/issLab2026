@@ -1,0 +1,256 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="css/mystyle.css">
+<title>Differential Drive Robot</title>
+</head>
+    
+
+<body>
+<div id="top">
+<h1>Differential Drive Robot</h1>
+</div>  
+
+<div class="body">  
+
+<h2>Introduction</h2>
+<b>Goal: </b>Realizzazione di
+<a href='https://anatali.github.io/issLab2026/LectureBologna2026.html'>DIFFERENTIAL DRIVE ROBOT</a> limitatamente all'analisi dei requisiti
+ 
+<h2>Requirements</h2>
+<p>
+    Costruire un sistema software che comanda un Differential Drive Robot (DDR) in modo che, 
+    partendo dalla posizione iniziale HOME, il robot si sposti lungo il perimetro di una stanza rettangolare vuota. 
+    Il DDR si deve fermare quando tornato in HOME.
+</p>
+
+<p>
+    Il DDR è anche sensibile ai dati rilevati da un Radar.
+    Quando il Radar rileva un 'intruso' a una distanza minore di una distanza prefissata <code>DMIN</code>:
+</p>
+
+<ul>
+    <li>se il DDR si sta muovendo, il DDR si ferma fino a che il Radar non rileva più un 'intruso' così vicino</li>
+    <li>se il DDR è fermo in HOME, il DDR ruota su sè stesso fino a che un 'intruso' così vicino scompare</li>
+</ul>
+
+<h2>Requirement analysis</h2>
+<p>
+L'analisi dei requisiti mira a chiarire le astrazioni software necessarie e a definire l'alfabeto dei messaggi e l'architettura logica iniziale del sistema, eliminando ogni ambiguità interpretativa dal testo dei requisiti tramite modelli computazionali formali.
+</p>
+<p>
+Il sistema software preso in esame è composto dalle seguenti entità fondamentali:
+</p>
+
+<h3>HOME e la Stanza</h3>
+<p>
+Nei requisiti si parla di <code>HOME</code> come posizione iniziale in cui il DDR si trova all'interno della stanza e posizione finale del percorso lungo il perimetro. 
+Per poter modellare la <code>HOME</code> è necessario prima formalizzare la stanza. Possiamo modellare la stanza come un rettangolo in un piano euclideo con base <i>B</i> e altezza <i>H</i>, dove entrambe le misure sono espresse in metri. Tuttavia, poiché il robot non è un punto ma occuperà un'area fisica che assumiamo quadrata di lato <i>R</i>, risulta necessario adottare una discretizzazione dello spazio in unità robotiche (celle). La stanza viene così mappata su una griglia bidimensionale dove ogni cella rappresenta un'area di dimensione <i>R &times; R</i>.
+</p>
+<p>
+<code>HOME</code> viene quindi formalizzata come una cella specifica e predefinita all'interno della griglia (l'angolo in alto a sinistra), atta a contenere interamente il robot.
+</p>
+<p>
+Possiamo formalizzare questa struttura spaziale con il seguente codice Kotlin:
+</p>
+<pre>
+/**
+ * Rappresentazione formale della Stanza come griglia computazionale.
+ * Sistema di riferimento: asse x verso destra, asse y verso il basso.
+ * * @property B larghezza della stanza in unità robotiche (numero di celle su x)
+ * @property H altezza della stanza in unità robotiche (numero di celle su y)
+ * @property R lato dell'unità robotica in metri (coincide con il lato di ogni cella)
+ */
+data class Stanza(
+    val B: Int,
+    val H: Int,
+    val R: Double
+) {
+    /** Dimensioni fisiche della stanza in metri */
+    val larghezzaMetri: Double get() = B * R
+    val altezzaMetri: Double get() = H * R
+
+    /** Posizione HOME: cella iniziale predefinita (0, 0) */
+    val home: Posizione = Posizione(0, 0)
+}
+
+/**
+ * Coordinate discrete di una cella nella griglia spaziale.
+ */
+data class Posizione(val x: Int, val y: Int)
+</pre>
+
+<hr/>
+
+<h3>Radar</h3>
+<p>
+Il Radar è un'entità proattiva deputata al monitoraggio dell'intorno del DDR per rilevare eventuali "intrusi" a una distanza inferiore a <code>DMIN</code>. La sua proprietà fondamentale è la generatione del dato informativo <i>D</i> (distanza in metri). Nel metamodello QAK viene formalizzato come un <b>attore</b>.
+</p>
+<p>
+Per definire come questo dato sia accessibile al sistema, si profilano due opzioni di formalizzazione per la comunicazione:
+</p>
+
+<h4>Opzione 1: Modello ad Eventi (Push Communication)</h4>
+<p>
+Il radar comunica in autonomia la distanza rilevata tramite un evento asincrono, poiché non conosce (e non deve conoscere) i destinatari dell'informazione.
+</p>
+<pre>
+System ddrsystem
+
+// ----- Definizione dei Messaggi -----
+Event radar : distance(D) // D: distanza rilevata in metri (Double)
+
+// ----- Definizione del Contesto -----
+Context ctxddrsys ip [ host="localhost" port=8010 ]
+
+// ----- Definizione dell'Attore -----
+QActor radar context ctxddrsys {
+    State s0 initial {
+        println("$name | starting")
+    }
+    Goto rileva_distanza
+    
+    State rileva_distanza {
+        // Rilevamento formale del dato D
+    }
+    Transition t0 
+        whenTime 1000 -> rileva_distanza
+}
+</pre>
+
+<h4>Opzione 2: Modello Request-Response (Pull Communication)</h4>
+<p>
+Il radar comunica la distanza rilevata esclusivamente come risposta a una specifica richiesta esplicita inviata dal sistema di controllo.
+</p>
+<pre>
+System ddrsystem
+
+// ----- Definizione dei Messaggi -----
+Request getDistance : getDistance(X)       // Richiesta del sistema
+Reply   radarReply  : distance(D) for getDistance // Risposta del radar
+
+// ----- Definizione del Contesto -----
+Context ctxddrsys ip [ host="localhost" port=8010 ]
+
+// ----- Definizione dell'Attore -----
+QActor radar context ctxddrsys {
+    State s0 initial {
+        println("$name | starting")
+    }
+    Goto attesa_richieste
+    
+    State attesa_richieste {
+        // Il radar rimane in attesa di sollecitazioni esterne
+    }
+    Transition t0 
+        whenRequest getDistance -> handleRequest
+   
+    State handleRequest {
+        // Risposta formale al mittente con il dato D
+    }  
+    Goto attesa_richieste
+}
+</pre>
+
+<blockquote>
+    <b>Scelta di Analisi:</b> Tra i due modelli, si preferisce l'<b>Opzione 1 (Modello ad Eventi)</b>. Trattandosi di un requisito di sicurezza (arresto d'emergenza in presenza di un intruso), l'uso di un evento asincrono garantisce che la notifica del pericolo sia immediata (reattività ottimale), evitando il ritardo computazionale e il sovraccarico introdotto dal polling continuo richiesto dall'Opzione 2.
+</blockquote>
+
+<hr/>
+
+<h3>Differential Drive Robot (DDR)</h3>
+<p>
+Il DDR viene modellato come un'entità puramente reattiva, priva di logica decisionale autonoma. Esso funge da mero attuatore passivo di comandi di movimento elementari ricevuti dal supervisore. In conformità con le specifiche e il software fornito dal committente, le sua capacità operative sono limitate a un set ristretto di azioni atomiche: traslazione lineare in avanti (passo di una cella) e rotazione assiale sul proprio asse di 90&deg;.
+</p>
+<p>
+Viene formalizzato come un attore che espone un'interfaccia di comandi (dispatch) e restituisce l'esito dell'azione atomica:
+</p>
+<pre>
+// ----- Definizione dei Messaggi per il DDR -----
+Dispatch ddrCmd   : ddrCmd(MOVE)  // MOVE in { step, turnLeft, turnRight, stop }
+Dispatch stepDone : stepDone(X)   // Feedback di movimento completato con successo
+Dispatch stepFail : stepFail(X)   // Feedback di movimento fallito (es. ostacolo)
+
+QActor ddr context ctxddrsys {
+    State s0 initial {
+        println("$name | attuatore DDR pronto")
+    }
+    Transition t0 
+        whenMsg ddrCmd -> gestisciMovimento
+        
+    State gestisciMovimento {
+        // Interfaccia di ricezione passiva del comando atomico
+    }
+    Goto s0
+}
+</pre>
+
+<hr/>
+
+<h3>Mind</h3>
+<p>
+Il sistema si occuperà del controllo e del coordinamento del DDR in conformità alle specifiche di progetto (navigazione perimetrale e gestione degli allarmi). Riceve il dato della distanza <i>D</i> dal Radar e lo confronta con la soglia critica <code>DMIN</code>.
+</p>
+<p>
+In questa fase di analisi dei requisiti, la struttura formale dell'attore <code>Mind</code> (così da noi definito per riferirci al sistema) viene definita specificando la sua interfaccia di ricezione degli eventi del radar e lo scheletro degli stati macroscopici necessari a soddisfare le specifiche del committente:
+</p>
+<pre>
+QActor mind context ctxddrsys {
+    State s0 initial {
+        println("$name | starting e pianificazione missione")
+    }
+    Goto eseguiMissionePerimetro
+    
+    State eseguiMissionePerimetro {
+        // Struttura macro per scorrere le celle del perimetro
+    }
+    Transition t0 
+        whenEvent radar -> valutaIncolumita
+        
+    State valutaIncolumita {
+        // Controllo astratto se D &lt; DMIN per smistamento negli stati di emergenza
+    }
+    Goto eseguiMissionePerimetro 
+    
+    State statoEmergenzaHalt {
+        // Gestione Requisito: "Se il DDR si sta muovendo, si ferma"
+    }
+    
+    State statoRotazioneSicurezza {
+        // Gestione Requisito: "Se il DDR è fermo in HOME, ruota su se stesso"
+    }
+}
+</pre>
+<p>
+Dall'analisi dello stato <code>statoRotazioneSicurezza</code> emerge una <b>deduzione formale fondamentale</b> per risolvere un'ambiguità del testo: affinché la rotazione del robot in HOME possa far "scomparire" l'intruso (facendo aumentare la distanza <i>D &gt; D<sub>MIN</sub></i>), <b>il Radar deve essere necessariamente montato a bordo del robot ed essere di tipo direzionale</b>. Se fosse un radar fisso nell'ambiente o omnidirezionale, la rotazione del robot su se stesso non varierebbe il flusso di dati del sensore, bloccando il sistema in un ciclo infinito.
+</p>
+
+
+<h2>Problem analysis</h2>
+<p></p>
+
+
+<h2>Test plans</h2> 
+
+
+<h2>Project</h2> 
+ 
+
+<h2>Testing</h2> 
+
+
+<h2>Deployment</h2> 
+<p></p>
+ 
+<h2>Maintenance</h2> 
+ 
+<br/><br/>  
+</div>  
+
+<div style="background-color:rgba(86, 56, 253, 0.9); width:63%;text-align:left;color:white">
+By Gianluca Varisco email: gianluca.varisco@studio.unibo.it, 
+<img src="d:\magistrale\primo_anno\2_semestre\ingegneria_dei_sistemi_software\consegna_prof\foto_per_iss.jpeg" alt="foto_per_iss" width="8%" height="8%">
+GIT repo: https://github.com/gianluca-varisco/issLab2026
+</div> 
+</body>
+</html>
